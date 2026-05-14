@@ -1,0 +1,11 @@
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-homerun2-pitcher
+spec:
+  package: ghcr.io/stuttgart-things/function-homerun2-pitcher:v0.1.0
+  runtimeConfigRef:
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: DeploymentRuntimeConfig
+    name: function-homerun2-pitcher
