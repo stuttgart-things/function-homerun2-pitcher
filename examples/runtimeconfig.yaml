@@ -1,0 +1,19 @@
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: function-homerun2-pitcher
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+            - name: package-runtime
+              env:
+                - name: PITCH_AUTH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: homerun2-pitcher-auth
+                      key: token

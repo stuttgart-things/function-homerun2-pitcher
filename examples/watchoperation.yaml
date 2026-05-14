@@ -1,0 +1,29 @@
+---
+# Watches every ConfigMap in the `demo` namespace and pitches each
+# change to the homerun2-omni-pitcher /pitch endpoint.
+apiVersion: ops.crossplane.io/v1alpha1
+kind: WatchOperation
+metadata:
+  name: pitch-configmaps
+spec:
+  watch:
+    apiVersion: v1
+    kind: ConfigMap
+    namespace: demo
+  operationTemplate:
+    metadata:
+      labels:
+        homerun.io/pitched-by: function-homerun2-pitcher
+    spec:
+      mode: Pipeline
+      pipeline:
+        - step: pitch
+          functionRef:
+            name: function-homerun2-pitcher
+          input:
+            apiVersion: fn.homerun.io/v1alpha1
+            kind: PitchInput
+            endpoint: http://homerun2-omni-pitcher.homerun.svc:8080
+            stream: configmaps
+            payloadMode: envelope
+            timeoutSeconds: 10

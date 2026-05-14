@@ -1,0 +1,60 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: pitchinputs.fn.homerun.io
+spec:
+  group: fn.homerun.io
+  names:
+    categories:
+      - crossplane
+    kind: PitchInput
+    listKind: PitchInputList
+    plural: pitchinputs
+    singular: pitchinput
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: |
+            PitchInput configures the function-homerun2-pitcher Operation
+            function. Set this on a WatchOperation pipeline step's `input`.
+          type: object
+          required:
+            - endpoint
+            - stream
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            endpoint:
+              type: string
+              format: uri
+              description: |
+                Base URL of the homerun2-omni-pitcher service. The function
+                POSTs to `<endpoint>/pitch`.
+            stream:
+              type: string
+              minLength: 1
+              description: Redis stream name forwarded to the pitcher.
+            payloadMode:
+              type: string
+              enum: [full, envelope]
+              default: envelope
+              description: |
+                `full` forwards the entire watched-resource JSON. `envelope`
+                forwards only `{apiVersion, kind, namespace, name, uid,
+                resourceVersion, spec, status}`.
+            timeoutSeconds:
+              type: number
+              minimum: 0
+              exclusiveMinimum: true
+              maximum: 300
+              default: 10
+              description: HTTP request timeout when calling the pitcher.
