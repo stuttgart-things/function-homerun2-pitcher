@@ -26,16 +26,23 @@ env:
   XPKG: ghcr.io/${{ github.repository }}
 
 jobs:
-  python-validate:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-python-validation.yaml@main
-    with:
-      runs-on: ubuntu-latest
-      module-name: function-homerun2-pitcher
-      python-version: "3.13-slim"
-      environment-name: linting
-      accept-linterrors: true
-      accept-failedtests: false
-    secrets: inherit # pragma: allowlist secret
+  lint:
+    name: ruff (hatch fmt)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Hatch
+        run: pipx install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Lint
+        run: hatch fmt --check
 
   unit-test:
     name: pytest (hatch)
@@ -81,8 +88,6 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
-        with:
-          install: true
 
       - name: Build runtime image (linux/${{ matrix.arch }}) → tarball
         uses: docker/build-push-action@v7
