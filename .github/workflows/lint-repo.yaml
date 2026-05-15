@@ -1,0 +1,60 @@
+---
+name: Lint Repository
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  Lint-Repository:
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-repository-linting.yaml@main
+    with:
+      runs-on: ubuntu-latest
+      environment-name: linting
+      app-directory: "./"
+      output-file: "/tmp/function-homerun2-pitcher.txt"
+      continue-error: "true"
+      dagger-version: v0.20.0
+      dagger-module-version: v1.59.0
+      branch-name: ${{ github.head_ref || github.ref_name }}
+    secrets: inherit # pragma: allowlist secret
+
+  commitlint:
+    name: Commit message lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: commitlint
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.yaml
+          failOnWarnings: false
+          helpURL: https://www.conventionalcommits.org
+
+  pre-commit:
+    name: pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1

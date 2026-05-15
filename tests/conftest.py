@@ -1,7 +1,5 @@
 """Shared pytest fixtures."""
 
-import os
-
 import httpx
 import pytest
 import pytest_asyncio

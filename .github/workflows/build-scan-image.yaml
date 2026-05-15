@@ -1,0 +1,79 @@
+---
+name: Build & Scan Runtime Image
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_REPO: ghcr.io/${{ github.repository }}
+  IMAGE_TAG: ${{ github.event_name == 'pull_request' && format('runtime-pr-{0}', github.event.number) || 'runtime-main' }}
+
+jobs:
+  build:
+    name: Build runtime image (linux/amd64)
+    runs-on: ubuntu-latest
+    outputs:
+      image-ref: ${{ steps.push.outputs.image-ref }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push runtime image
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: image
+          push: true
+          tags: ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-${{ github.sha }}
+
+      - name: Write image ref artifact
+        run: |
+          printf '%s' '${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}-${{ github.sha }}' > image-ref.txt
+
+      - name: Upload image ref artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-image-ref
+          path: image-ref.txt
+          retention-days: 1
+
+  trivy-scan:
+    name: Trivy scan
+    needs: [build]
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@main
+    with:
+      runs-on: ubuntu-latest
+      image-ref-artifact: runtime-image-ref
+      severity: HIGH,CRITICAL
+      artifact-name: trivy-runtime-report
+      continue-on-error: false
+    secrets: inherit # pragma: allowlist secret
