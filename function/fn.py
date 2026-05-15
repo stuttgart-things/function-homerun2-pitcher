@@ -65,7 +65,7 @@ class FunctionRunner(grpcv1.FunctionRunnerService):
         self.log = logging.get_logger()
         self._http_client = http_client
 
-    async def RunFunction(
+    async def RunFunction(  # noqa: PLR0911
         self,
         req: fnv1.RunFunctionRequest,
         _: grpc.aio.ServicerContext,
@@ -120,7 +120,9 @@ class FunctionRunner(grpcv1.FunctionRunnerService):
             http_response = await self._post(url, body, headers, pi.timeout_seconds)
         except httpx.TimeoutException as e:
             log.error("Pitcher request timed out", error=str(e))
-            response.fatal(rsp, f"pitcher request timed out after {pi.timeout_seconds}s")
+            response.fatal(
+                rsp, f"pitcher request timed out after {pi.timeout_seconds}s"
+            )
             return rsp
         except httpx.HTTPError as e:
             log.error("Pitcher request failed", error=str(e))
@@ -168,7 +170,7 @@ class FunctionRunner(grpcv1.FunctionRunnerService):
         url: str,
         body: dict[str, Any],
         headers: dict[str, str],
-        timeout: float,
+        timeout: float,  # noqa: ASYNC109
     ) -> httpx.Response:
         """POST to the pitcher. Reuses an injected client if present."""
         if self._http_client is not None:

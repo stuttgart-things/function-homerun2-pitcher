@@ -42,7 +42,6 @@ jobs:
         uses: wagoid/commitlint-github-action@v6
         with:
           configFile: .commitlintrc.yaml
-          firstParent: true
           failOnWarnings: false
           helpURL: https://www.conventionalcommits.org
 

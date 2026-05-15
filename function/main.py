@@ -34,12 +34,12 @@ from function.fn import AUTH_TOKEN_ENV
     help=f"Skip the startup check for {AUTH_TOKEN_ENV}. Useful for local "
     "development with `hatch run development`.",
 )
-def cli(  # noqa: FBT001, PLR0913
-    debug: bool,
+def cli(
+    debug: bool,  # noqa: FBT001
     address: str,
     tls_certs_dir: str,
-    insecure: bool,
-    skip_token_check: bool,
+    insecure: bool,  # noqa: FBT001
+    skip_token_check: bool,  # noqa: FBT001
 ) -> None:
     """Run the function-homerun2-pitcher gRPC server."""
     level = logging.Level.DEBUG if debug else logging.Level.INFO
@@ -67,7 +67,7 @@ def cli(  # noqa: FBT001, PLR0913
             creds=runtime.load_credentials(tls_certs_dir),
             insecure=insecure,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         click.echo(f"Cannot run function: {e}", err=True)
         sys.exit(1)
 

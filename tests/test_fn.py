@@ -32,7 +32,9 @@ async def test_happy_path_envelope_mode(runner):
 
     with respx.mock(assert_all_called=True) as r:
         route = r.post(PITCH_URL).mock(
-            return_value=httpx.Response(200, json={"id": "msg-1", "stream": "configmaps"})
+            return_value=httpx.Response(
+                200, json={"id": "msg-1", "stream": "configmaps"}
+            )
         )
         rsp = await runner.RunFunction(req, None)
 
@@ -71,7 +73,9 @@ async def test_happy_path_full_mode(runner):
     req = build_request(pitch_input=pi)
 
     with respx.mock(assert_all_called=True) as r:
-        route = r.post(PITCH_URL).mock(return_value=httpx.Response(200, json={"id": "x"}))
+        route = r.post(PITCH_URL).mock(
+            return_value=httpx.Response(200, json={"id": "x"})
+        )
         rsp = await runner.RunFunction(req, None)
 
     assert _severities(rsp) == [NORMAL]
@@ -85,7 +89,9 @@ async def test_full_mode_when_watched_lacks_spec_status(runner):
     """Envelope works for ConfigMap-shaped resources that have no spec/status."""
     req = build_request()
     with respx.mock() as r:
-        route = r.post(PITCH_URL).mock(return_value=httpx.Response(200, json={"id": "x"}))
+        route = r.post(PITCH_URL).mock(
+            return_value=httpx.Response(200, json={"id": "x"})
+        )
         await runner.RunFunction(req, None)
 
     import json
@@ -101,7 +107,12 @@ async def test_envelope_with_spec_and_status_xr_shape():
     xr = {
         "apiVersion": "example.crossplane.io/v1",
         "kind": "XR",
-        "metadata": {"name": "x", "namespace": "ns", "uid": "u", "resourceVersion": "9"},
+        "metadata": {
+            "name": "x",
+            "namespace": "ns",
+            "uid": "u",
+            "resourceVersion": "9",
+        },
         "spec": {"region": "eu-central-1"},
         "status": {"phase": "Ready"},
     }
@@ -180,7 +191,7 @@ async def test_missing_endpoint_is_fatal(runner):
 
 async def test_unknown_field_rejected_by_schema(runner):
     """extra='forbid' on the schema catches typos like `endPoint`."""
-    bad = {**VALID_INPUT, "endPoint": "http://x"}  # noqa: N806 (intentional typo)
+    bad = {**VALID_INPUT, "endPoint": "http://x"}
     req = build_request(pitch_input=bad)
     rsp = await runner.RunFunction(req, None)
 
@@ -213,7 +224,9 @@ async def test_pitcher_url_includes_pitch_path(runner):
     pi = {**VALID_INPUT, "endpoint": "http://pitcher.svc:8080/"}
     req = build_request(pitch_input=pi)
     with respx.mock() as r:
-        route = r.post(PITCH_URL).mock(return_value=httpx.Response(200, json={"id": "z"}))
+        route = r.post(PITCH_URL).mock(
+            return_value=httpx.Response(200, json={"id": "z"})
+        )
         await runner.RunFunction(req, None)
     assert str(route.calls.last.request.url) == PITCH_URL
 
