@@ -34,9 +34,13 @@ repos:
       - id: hadolint-docker
         args:
           - --ignore
-          - DL4006
+          - DL3006  # distroless base images don't need an explicit tag
+          - --ignore
+          - DL3008  # OS-level pkgs (python3-venv, git) intentionally unpinned
           - --ignore
           - DL3015
+          - --ignore
+          - DL4006
 
   - repo: https://github.com/sirosen/check-jsonschema
     rev: 0.30.0
