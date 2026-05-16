@@ -32,8 +32,14 @@ def _kubectl(*args: str) -> str:
 
 def _xlen() -> int:
     raw = _kubectl(
-        "-n", NS_APP, "exec", "deploy/redis", "--",
-        "redis-cli", "XLEN", STREAM,
+        "-n",
+        NS_APP,
+        "exec",
+        "deploy/redis",
+        "--",
+        "redis-cli",
+        "XLEN",
+        STREAM,
     )
     # `redis-cli XLEN` prints just the integer
     return int(raw.splitlines()[-1])
@@ -46,7 +52,11 @@ def test_configmap_change_appears_in_redis_stream() -> None:
 
     name = f"e2e-{int(time.time())}"
     _kubectl(
-        "-n", NS_DEMO, "create", "configmap", name,
+        "-n",
+        NS_DEMO,
+        "create",
+        "configmap",
+        name,
         "--from-literal=greeting=hi",
     )
 

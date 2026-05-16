@@ -31,7 +31,9 @@ jobs:
       KUBECTL_VERSION: v1.31.0
       HELM_VERSION: v3.16.2
       TASK_VERSION: v3.39.2
-      PYTHON_VERSION: "3.13"
+      # 3.13 has no prebuilt for Ubuntu 26.04 on the self-hosted kind runner.
+      # 3.12 satisfies pyproject's `>=3.11,<3.14` and matches local dev.
+      PYTHON_VERSION: "3.12"
       HATCH_VERSION: "1.16.5"
       KIND_CLUSTER: function-homerun2-pitcher-e2e
 
