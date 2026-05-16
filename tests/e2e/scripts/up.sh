@@ -27,24 +27,8 @@ PITCH_TOKEN="${PITCH_AUTH_TOKEN:-e2e-not-a-real-secret}"
 dump_state() {
   local code=$?
   if [ "${code}" -ne 0 ]; then
-    echo "==> up.sh failed (exit ${code}) — dumping cluster state" >&2
-    kubectl get nodes -o wide || true
-    kubectl get pods -A -o wide || true
-    kubectl describe pods -n "${E2E_NS_APP}" || true
-    echo "--- omni-pitcher logs ---"
-    kubectl logs -n "${E2E_NS_APP}" -l app=homerun2-omni-pitcher \
-      --tail=200 --all-containers || true
-    echo "--- redis logs ---"
-    kubectl logs -n "${E2E_NS_APP}" -l app=redis \
-      --tail=50 --all-containers || true
-    echo "--- crossplane-system describe ---"
-    kubectl describe pods -n "${E2E_NS_XP}" || true
-    echo "--- function pod logs ---"
-    kubectl logs -n "${E2E_NS_XP}" \
-      -l pkg.crossplane.io/function=function-homerun2-pitcher \
-      --tail=200 --all-containers || true
-    echo "--- events ---"
-    kubectl get events -A --sort-by=.lastTimestamp | tail -100 || true
+    echo "==> up.sh failed (exit ${code})" >&2
+    bash "$(dirname "$0")/dump.sh" || true
   fi
 }
 trap dump_state EXIT

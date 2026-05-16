@@ -159,6 +159,15 @@ tasks:
       E2E_NS_APP: "{{.E2E_NS_APP}}"
       E2E_NS_DEMO: "{{.E2E_NS_DEMO}}"
 
+  e2e:dump:
+    desc: Dump pods, logs, events and Operation objects from the e2e cluster
+    cmds:
+      - bash tests/e2e/scripts/dump.sh
+    env:
+      E2E_NS_XP: "{{.E2E_NS_XP}}"
+      E2E_NS_APP: "{{.E2E_NS_APP}}"
+      E2E_NS_DEMO: "{{.E2E_NS_DEMO}}"
+
   e2e:down:
     desc: Tear down the kind cluster and the local registry container
     cmds:
@@ -166,13 +175,13 @@ tasks:
       - docker rm -f {{.KIND_REGISTRY_NAME}} || true
 
   e2e:
-    desc: Full e2e — bring up, run pytest, tear down (trap ensures cleanup on failure)
+    desc: Full e2e — bring up, run pytest, dump-on-failure, tear down
     cmds:
       # Task runs commands via mvdan/sh, which doesn't accept named signals
       # like INT/TERM in `trap`. EXIT alone covers normal exit + `set -e`
-      # failures, which is all we need for CI cleanup.
+      # failures, which is what we need for CI cleanup.
       - |
         set -eu
-        trap 'task e2e:down' EXIT
+        trap 'rc=$?; if [ "$rc" -ne 0 ]; then task e2e:dump || true; fi; task e2e:down' EXIT
         task e2e:up
         task e2e:test
