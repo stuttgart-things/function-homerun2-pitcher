@@ -69,22 +69,34 @@ containerdConfigPatches:
       config_path = "/etc/containerd/certs.d"
 EOF
 
-# Tell each kind node to resolve 127.0.0.1:<port> to the registry container.
-# Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
-# We use 127.0.0.1 (not localhost) because Crossplane v2's package validator
-# requires a dot in the hostname; same name is used by E2E_XPKG_TAG.
-REGISTRY_DIR="/etc/containerd/certs.d/127.0.0.1:${KIND_REGISTRY_PORT}"
-for node in $(kind get nodes --name "${KIND_CLUSTER}"); do
-  docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
-  cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
-[host."http://${KIND_REGISTRY_NAME}:5000"]
-EOF
-done
-
-# Attach the registry to the kind network so nodes can reach it by name.
+# Attach the registry to the kind docker network. Pods inside the cluster
+# can only reach it via its bridge IP (kindnet/CoreDNS doesn't resolve
+# docker-network names), and Crossplane's package manager fetches packages
+# over HTTP — not via containerd — so the containerd registry mirror trick
+# alone is not enough; we need a routable address.
 if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${KIND_REGISTRY_NAME}")" = 'null' ]; then
   docker network connect kind "${KIND_REGISTRY_NAME}"
 fi
+REGISTRY_IP=$(docker inspect \
+  -f '{{.NetworkSettings.Networks.kind.IPAddress}}' "${KIND_REGISTRY_NAME}")
+if [ -z "${REGISTRY_IP}" ]; then
+  echo "could not determine kind-registry IP on the kind network" >&2
+  exit 1
+fi
+E2E_FUNCTION_PACKAGE_REF="${REGISTRY_IP}:5000/function-homerun2-pitcher:e2e"
+echo "==> registry reachable in-cluster as ${REGISTRY_IP}:5000"
+
+# Configure containerd on every kind node to talk plain HTTP to the
+# registry's bridge IP, so kubelet's image pull (for the Function runtime)
+# doesn't fail with a TLS handshake error. Reference:
+# https://kind.sigs.k8s.io/docs/user/local-registry/
+REGISTRY_DIR="/etc/containerd/certs.d/${REGISTRY_IP}:5000"
+for node in $(kind get nodes --name "${KIND_CLUSTER}"); do
+  docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
+  cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
+[host."http://${REGISTRY_IP}:5000"]
+EOF
+done
 
 echo "==> install Crossplane v2 with --enable-operations"
 kubectl create namespace "${E2E_NS_XP}" --dry-run=client -o yaml | kubectl apply -f -
@@ -121,14 +133,12 @@ kubectl -n "${E2E_NS_XP}" create secret generic homerun2-pitcher-auth \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "${EXAMPLES}/runtimeconfig.yaml"
 
-# Patch the example Function to point at our local-registry xpkg instead of
-# the released ghcr.io tag. Use the same `localhost:5001/...` reference
-# the host pushed to — containerd on each kind node has a mirror entry
-# under /etc/containerd/certs.d that resolves it to http://kind-registry:5000.
-# A bare `kind-registry:5000/...` would fail Crossplane's spec.package
-# validation (hostnames without a dot, and not `localhost`, are parsed as
-# path components, not a registry).
-sed "s|ghcr.io/stuttgart-things/function-homerun2-pitcher:v0.1.0|${E2E_XPKG_TAG}|" \
+# Reference the registry by its bridge IP in the Function spec. The image
+# bytes are the same as what the host pushed via E2E_XPKG_TAG — same
+# registry, just a different host alias. The IP is reachable from pods
+# (cluster networking can route to the kind bridge) and contains dots so
+# Crossplane's package validator accepts it.
+sed "s|ghcr.io/stuttgart-things/function-homerun2-pitcher:v0.1.0|${E2E_FUNCTION_PACKAGE_REF}|" \
   "${EXAMPLES}/function.yaml" | kubectl apply -f -
 
 echo "==> wait for Function HEALTHY"
