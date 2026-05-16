@@ -106,9 +106,11 @@ kubectl -n "${E2E_NS_APP}" rollout status deploy/homerun2-omni-pitcher --timeout
 
 echo "==> build + push xpkg to local registry as ${E2E_XPKG_TAG}"
 (cd "${REPO_ROOT}" && task build-xpkg-amd64)
+# go-containerregistry (used by `crossplane xpkg push`) auto-detects
+# localhost/127.0.0.1 and uses plain HTTP, so no --insecure flag is
+# needed — and v2.2.0 doesn't accept one.
 crossplane xpkg push \
   --package-files="${REPO_ROOT}/dist/function-homerun2-pitcher-amd64.xpkg" \
-  --insecure \
   "${E2E_XPKG_TAG}"
 
 echo "==> install Function + runtime config + auth secret"
