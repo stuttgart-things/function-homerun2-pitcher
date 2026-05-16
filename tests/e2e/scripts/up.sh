@@ -147,6 +147,8 @@ kubectl wait function.pkg.crossplane.io/function-homerun2-pitcher \
 
 echo "==> apply WatchOperation"
 kubectl create namespace "${E2E_NS_DEMO}" --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f "${EXAMPLES}/watchoperation.yaml"
+# Test fixture (not examples/watchoperation.yaml) because the published
+# example has fields the v2.2.0 strict decoder rejects.
+kubectl apply -f "${MANIFESTS}/watchoperation.yaml"
 
 echo "==> e2e:up done"

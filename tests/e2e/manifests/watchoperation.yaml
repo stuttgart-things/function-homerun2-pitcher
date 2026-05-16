@@ -1,0 +1,29 @@
+---
+# E2E variant of examples/watchoperation.yaml. The published example sets
+# spec.operationTemplate.metadata.labels for downstream filtering, but
+# Crossplane v2.2.0's strict decoder rejects that subfield as unknown on
+# WatchOperation v1alpha1. The test only needs the watch + pipeline, so
+# this fixture drops the metadata block.
+apiVersion: ops.crossplane.io/v1alpha1
+kind: WatchOperation
+metadata:
+  name: pitch-configmaps
+spec:
+  watch:
+    apiVersion: v1
+    kind: ConfigMap
+    namespace: demo
+  operationTemplate:
+    spec:
+      mode: Pipeline
+      pipeline:
+        - step: pitch
+          functionRef:
+            name: function-homerun2-pitcher
+          input:
+            apiVersion: fn.homerun.io/v1alpha1
+            kind: PitchInput
+            endpoint: http://homerun2-omni-pitcher.homerun.svc:8080
+            stream: configmaps
+            payloadMode: envelope
+            timeoutSeconds: 10
