@@ -120,9 +120,13 @@ kubectl -n "${E2E_NS_XP}" create secret generic homerun2-pitcher-auth \
 kubectl apply -f "${EXAMPLES}/runtimeconfig.yaml"
 
 # Patch the example Function to point at our local-registry xpkg instead of
-# the released ghcr.io tag.
-KIND_REG_INCLUSTER_TAG="${KIND_REGISTRY_NAME}:5000/function-homerun2-pitcher:e2e"
-sed "s|ghcr.io/stuttgart-things/function-homerun2-pitcher:v0.1.0|${KIND_REG_INCLUSTER_TAG}|" \
+# the released ghcr.io tag. Use the same `localhost:5001/...` reference
+# the host pushed to — containerd on each kind node has a mirror entry
+# under /etc/containerd/certs.d that resolves it to http://kind-registry:5000.
+# A bare `kind-registry:5000/...` would fail Crossplane's spec.package
+# validation (hostnames without a dot, and not `localhost`, are parsed as
+# path components, not a registry).
+sed "s|ghcr.io/stuttgart-things/function-homerun2-pitcher:v0.1.0|${E2E_XPKG_TAG}|" \
   "${EXAMPLES}/function.yaml" | kubectl apply -f -
 
 echo "==> wait for Function HEALTHY"
