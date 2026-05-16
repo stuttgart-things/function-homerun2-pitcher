@@ -24,12 +24,16 @@ spec:
                 secretKeyRef:
                   name: homerun2-omni-pitcher-auth
                   key: token
-            - name: REDIS_URL
-              value: redis://redis.homerun.svc:6379/0
+            - name: REDIS_ADDR
+              value: redis.homerun.svc
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_STREAM
+              value: configmaps
           ports:
             - containerPort: 8080
           readinessProbe:
-            httpGet: { path: /healthz, port: 8080 }
+            httpGet: { path: /health, port: 8080 }
             initialDelaySeconds: 2
             periodSeconds: 3
 ---
