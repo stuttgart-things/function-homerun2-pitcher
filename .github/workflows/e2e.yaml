@@ -70,7 +70,9 @@ jobs:
             | XP_CHANNEL=stable XP_VERSION=v2.2.0 sh
           install -m 0755 crossplane "$HOME/.local/bin/crossplane"
           rm -f crossplane
-          crossplane version
+          # `crossplane version` exits non-zero without a kubeconfig (it tries
+          # to query the server). Verify the binary runs without that.
+          crossplane --help >/dev/null && echo "crossplane CLI installed"
 
       - name: Scrub leftover kind cluster + registry
         run: |
