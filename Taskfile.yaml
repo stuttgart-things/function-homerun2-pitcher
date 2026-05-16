@@ -9,7 +9,11 @@ vars:
   KIND_CLUSTER: function-homerun2-pitcher-e2e
   KIND_REGISTRY_NAME: kind-registry
   KIND_REGISTRY_PORT: "5001"
-  E2E_XPKG_TAG: "localhost:{{.KIND_REGISTRY_PORT}}/function-homerun2-pitcher:e2e"
+  # Crossplane v2's spec.package validator rejects hostnames without a dot,
+  # so we reference the local registry as 127.0.0.1:5001 (dots in the IP
+  # pass validation). The containerd registry mirror in up.sh is keyed on
+  # the same name and forwards pulls to http://kind-registry:5000.
+  E2E_XPKG_TAG: "127.0.0.1:{{.KIND_REGISTRY_PORT}}/function-homerun2-pitcher:e2e"
   E2E_NS_XP: crossplane-system
   E2E_NS_APP: homerun
   E2E_NS_DEMO: demo

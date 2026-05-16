@@ -69,9 +69,11 @@ containerdConfigPatches:
       config_path = "/etc/containerd/certs.d"
 EOF
 
-# Tell each kind node to resolve localhost:<port> to the registry container.
+# Tell each kind node to resolve 127.0.0.1:<port> to the registry container.
 # Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
-REGISTRY_DIR="/etc/containerd/certs.d/localhost:${KIND_REGISTRY_PORT}"
+# We use 127.0.0.1 (not localhost) because Crossplane v2's package validator
+# requires a dot in the hostname; same name is used by E2E_XPKG_TAG.
+REGISTRY_DIR="/etc/containerd/certs.d/127.0.0.1:${KIND_REGISTRY_PORT}"
 for node in $(kind get nodes --name "${KIND_CLUSTER}"); do
   docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
   cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
