@@ -6,6 +6,13 @@ vars:
   XPKG_NAME: function-homerun2-pitcher
   VERSION:
     sh: hatch version 2>/dev/null || echo "0.0.0"
+  KIND_CLUSTER: function-homerun2-pitcher-e2e
+  KIND_REGISTRY_NAME: kind-registry
+  KIND_REGISTRY_PORT: "5001"
+  E2E_XPKG_TAG: "localhost:{{.KIND_REGISTRY_PORT}}/function-homerun2-pitcher:e2e"
+  E2E_NS_XP: crossplane-system
+  E2E_NS_APP: homerun
+  E2E_NS_DEMO: demo
 
 tasks:
   default:
@@ -126,3 +133,39 @@ tasks:
     desc: Lint commit messages on the current branch against main
     cmds:
       - npx --yes commitlint --from origin/main --to HEAD --verbose
+
+  e2e:up:
+    desc: Create kind cluster + local registry, install Crossplane v2 with --enable-operations, push local xpkg, deploy Redis + omni-pitcher + function manifests
+    cmds:
+      - bash tests/e2e/scripts/up.sh
+    env:
+      KIND_CLUSTER: "{{.KIND_CLUSTER}}"
+      KIND_REGISTRY_NAME: "{{.KIND_REGISTRY_NAME}}"
+      KIND_REGISTRY_PORT: "{{.KIND_REGISTRY_PORT}}"
+      E2E_XPKG_TAG: "{{.E2E_XPKG_TAG}}"
+      E2E_NS_XP: "{{.E2E_NS_XP}}"
+      E2E_NS_APP: "{{.E2E_NS_APP}}"
+      E2E_NS_DEMO: "{{.E2E_NS_DEMO}}"
+
+  e2e:test:
+    desc: Run the pytest e2e assertions against the running kind cluster
+    cmds:
+      - hatch run test-e2e
+    env:
+      E2E_NS_APP: "{{.E2E_NS_APP}}"
+      E2E_NS_DEMO: "{{.E2E_NS_DEMO}}"
+
+  e2e:down:
+    desc: Tear down the kind cluster and the local registry container
+    cmds:
+      - kind delete cluster --name {{.KIND_CLUSTER}} || true
+      - docker rm -f {{.KIND_REGISTRY_NAME}} || true
+
+  e2e:
+    desc: Full e2e — bring up, run pytest, tear down (trap ensures cleanup on failure)
+    cmds:
+      - |
+        set -euo pipefail
+        trap 'task e2e:down' EXIT INT TERM
+        task e2e:up
+        task e2e:test

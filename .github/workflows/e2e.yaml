@@ -1,0 +1,101 @@
+---
+name: CI - E2E
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: e2e (kind + Crossplane v2 + Operations)
+    # Dedicated kind-only runners (kind-testing-runner-1 / -2). `concurrency`
+    # above keeps only one job running at a time; the second runner is hot
+    # spare or room for a sibling project. Same pattern as
+    # stuttgart-things/sops-secrets-operator.
+    runs-on: [self-hosted, kind-testing-runner-1]
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      KIND_VERSION: v0.24.0
+      KUBECTL_VERSION: v1.31.0
+      HELM_VERSION: v3.16.2
+      TASK_VERSION: v3.39.2
+      PYTHON_VERSION: "3.13"
+      HATCH_VERSION: "1.16.5"
+      KIND_CLUSTER: function-homerun2-pitcher-e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Hatch
+        run: pipx install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Install kind + kubectl + helm + task
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSLo "$HOME/.local/bin/kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          curl -fsSLo "$HOME/.local/bin/kubectl" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" --strip-components=1 linux-amd64/helm
+          curl -fsSL "https://github.com/go-task/task/releases/download/${TASK_VERSION}/task_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" task
+          chmod +x "$HOME/.local/bin"/kind "$HOME/.local/bin"/kubectl "$HOME/.local/bin"/helm "$HOME/.local/bin"/task
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/kind" version
+          "$HOME/.local/bin/kubectl" version --client
+          "$HOME/.local/bin/helm" version
+          "$HOME/.local/bin/task" --version
+
+      - name: Install crossplane CLI
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/crossplane/crossplane/main/install.sh" \
+            | XP_CHANNEL=stable XP_VERSION=v2.2.0 sh
+          install -m 0755 crossplane "$HOME/.local/bin/crossplane"
+          rm -f crossplane
+          crossplane version
+
+      - name: Scrub leftover kind cluster + registry
+        run: |
+          kind delete cluster --name "${KIND_CLUSTER}" || true
+          docker rm -f kind-registry || true
+
+      - name: Pre-run diagnostics
+        run: |
+          echo "=== docker ps -a ==="; docker ps -a || true
+          echo "=== free -h ==="; free -h || true
+          echo "=== df -h ==="; df -h /var/lib/docker / || true
+
+      - name: Run e2e
+        run: task e2e
+
+      - name: Cleanup
+        if: always()
+        run: |
+          kind delete cluster --name "${KIND_CLUSTER}" || true
+          docker rm -f kind-registry || true
+
+      - name: Post-run diagnostics (on failure only)
+        if: failure()
+        run: |
+          echo "=== docker ps -a ==="; docker ps -a || true
+          echo "=== free -h ==="; free -h || true
+          echo "=== df -h ==="; df -h /var/lib/docker / || true
+          echo "=== last 200 lines of dockerd journal ==="
+          journalctl -u docker --no-pager -n 200 || true
