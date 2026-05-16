@@ -164,8 +164,11 @@ tasks:
   e2e:
     desc: Full e2e — bring up, run pytest, tear down (trap ensures cleanup on failure)
     cmds:
+      # Task runs commands via mvdan/sh, which doesn't accept named signals
+      # like INT/TERM in `trap`. EXIT alone covers normal exit + `set -e`
+      # failures, which is all we need for CI cleanup.
       - |
-        set -euo pipefail
-        trap 'task e2e:down' EXIT INT TERM
+        set -eu
+        trap 'task e2e:down' EXIT
         task e2e:up
         task e2e:test
