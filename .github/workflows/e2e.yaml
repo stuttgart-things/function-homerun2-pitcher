@@ -85,27 +85,11 @@ jobs:
           echo "=== free -h ==="; free -h || true
           echo "=== df -h ==="; df -h /var/lib/docker / || true
 
+      # Cluster diagnostics live inside tests/e2e/scripts/up.sh on a bash
+      # EXIT trap — running here would be too late (the outer Taskfile
+      # trap calls `task e2e:down` first and deletes the cluster).
       - name: Run e2e
-        id: run-e2e
         run: task e2e
-
-      - name: Dump cluster state on failure
-        if: failure() && steps.run-e2e.outcome == 'failure'
-        run: |
-          export KUBECONFIG="$HOME/.kube/config"
-          echo "=== nodes ==="; kubectl get nodes -o wide || true
-          echo "=== all pods ==="; kubectl get pods -A -o wide || true
-          echo "=== homerun describe ==="; kubectl describe pods -n homerun || true
-          echo "=== omni-pitcher logs ==="
-          kubectl logs -n homerun -l app=homerun2-omni-pitcher --tail=200 --all-containers || true
-          echo "=== redis logs ==="
-          kubectl logs -n homerun -l app=redis --tail=50 --all-containers || true
-          echo "=== crossplane-system describe ==="
-          kubectl describe pods -n crossplane-system || true
-          echo "=== function pod logs ==="
-          kubectl logs -n crossplane-system -l pkg.crossplane.io/function=function-homerun2-pitcher --tail=200 --all-containers || true
-          echo "=== events ==="
-          kubectl get events -A --sort-by=.lastTimestamp | tail -100 || true
 
       - name: Cleanup
         if: always()

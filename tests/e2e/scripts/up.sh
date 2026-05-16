@@ -21,6 +21,34 @@ MANIFESTS="${REPO_ROOT}/tests/e2e/manifests"
 EXAMPLES="${REPO_ROOT}/examples"
 PITCH_TOKEN="${PITCH_AUTH_TOKEN:-e2e-not-a-real-secret}"
 
+# Dump cluster state before exiting so CI logs contain enough to debug.
+# Runs from a bash EXIT trap on non-zero exit — placed here so it fires
+# BEFORE the outer `task e2e` trap deletes the cluster.
+dump_state() {
+  local code=$?
+  if [ "${code}" -ne 0 ]; then
+    echo "==> up.sh failed (exit ${code}) — dumping cluster state" >&2
+    kubectl get nodes -o wide || true
+    kubectl get pods -A -o wide || true
+    kubectl describe pods -n "${E2E_NS_APP}" || true
+    echo "--- omni-pitcher logs ---"
+    kubectl logs -n "${E2E_NS_APP}" -l app=homerun2-omni-pitcher \
+      --tail=200 --all-containers || true
+    echo "--- redis logs ---"
+    kubectl logs -n "${E2E_NS_APP}" -l app=redis \
+      --tail=50 --all-containers || true
+    echo "--- crossplane-system describe ---"
+    kubectl describe pods -n "${E2E_NS_XP}" || true
+    echo "--- function pod logs ---"
+    kubectl logs -n "${E2E_NS_XP}" \
+      -l pkg.crossplane.io/function=function-homerun2-pitcher \
+      --tail=200 --all-containers || true
+    echo "--- events ---"
+    kubectl get events -A --sort-by=.lastTimestamp | tail -100 || true
+  fi
+}
+trap dump_state EXIT
+
 echo "==> scrub leftover cluster + registry"
 kind delete cluster --name "${KIND_CLUSTER}" >/dev/null 2>&1 || true
 docker rm -f "${KIND_REGISTRY_NAME}" >/dev/null 2>&1 || true
