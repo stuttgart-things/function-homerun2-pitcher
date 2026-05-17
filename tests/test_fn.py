@@ -74,7 +74,7 @@ async def test_happy_path_envelope_mode(runner):
 
 
 async def test_happy_path_full_mode(runner):
-    """Full mode forwards the entire watched resource verbatim inside Message.message."""
+    """Full mode embeds the entire watched resource verbatim in Message.message."""
     pi = {**VALID_INPUT, "payloadMode": "full"}
     req = build_request(pitch_input=pi)
 
