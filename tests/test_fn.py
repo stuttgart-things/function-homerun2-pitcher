@@ -27,7 +27,7 @@ def _messages(rsp: fnv1.RunFunctionResponse) -> list[str]:
 
 
 async def test_happy_path_envelope_mode(runner):
-    """Envelope mode strips noise (managedFields, data) and posts the subset."""
+    """Envelope mode strips noise and posts a Message-shape with the envelope JSON."""
     req = build_request()
 
     with respx.mock(assert_all_called=True) as r:
@@ -49,8 +49,14 @@ async def test_happy_path_envelope_mode(runner):
     import json
 
     body = json.loads(sent.content)
-    assert body["stream"] == "configmaps"
-    assert set(body["payload"]) == {
+    # Pitcher Message schema: title + message are required.
+    assert body["title"] == "ConfigMap demo/hello"
+    assert body["severity"] == "info"
+    assert body["system"] == "configmaps"
+    assert body["tags"] == "ConfigMap,demo"
+    # The envelope (sans managedFields/data) is embedded as JSON in `message`.
+    envelope = json.loads(body["message"])
+    assert set(envelope) == {
         "apiVersion",
         "kind",
         "namespace",
@@ -58,8 +64,8 @@ async def test_happy_path_envelope_mode(runner):
         "uid",
         "resourceVersion",
     }
-    assert "managedFields" not in body["payload"]
-    assert "data" not in body["payload"]
+    assert "managedFields" not in envelope
+    assert "data" not in envelope
 
     # response.output gets the pitcher reply for downstream consumers.
     out = resource.struct_to_dict(rsp.output)
@@ -68,7 +74,7 @@ async def test_happy_path_envelope_mode(runner):
 
 
 async def test_happy_path_full_mode(runner):
-    """Full mode forwards the entire watched resource verbatim."""
+    """Full mode forwards the entire watched resource verbatim inside Message.message."""
     pi = {**VALID_INPUT, "payloadMode": "full"}
     req = build_request(pitch_input=pi)
 
@@ -82,7 +88,8 @@ async def test_happy_path_full_mode(runner):
     import json
 
     body = json.loads(route.calls.last.request.content)
-    assert body["payload"] == WATCHED_CONFIGMAP
+    assert body["title"] == "ConfigMap demo/hello"
+    assert json.loads(body["message"]) == WATCHED_CONFIGMAP
 
 
 async def test_full_mode_when_watched_lacks_spec_status(runner):
@@ -97,9 +104,10 @@ async def test_full_mode_when_watched_lacks_spec_status(runner):
     import json
 
     body = json.loads(route.calls.last.request.content)
+    envelope = json.loads(body["message"])
     # spec/status are optional in the envelope and absent here.
-    assert "spec" not in body["payload"]
-    assert "status" not in body["payload"]
+    assert "spec" not in envelope
+    assert "status" not in envelope
 
 
 async def test_envelope_with_spec_and_status_xr_shape():
