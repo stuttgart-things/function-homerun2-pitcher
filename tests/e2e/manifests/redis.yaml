@@ -12,9 +12,14 @@ spec:
       labels: { app: redis }
     spec:
       containers:
+        # omni-pitcher uses JSON.SET (RedisJSON module), which is only
+        # available in Redis Stack — vanilla redis:7-alpine returns
+        # "ERR unknown command 'JSON.SET'".
         - name: redis
-          image: redis:7-alpine
-          args: ["--save", "", "--appendonly", "no"]
+          image: redis/redis-stack-server:7.4.0-v5
+          env:
+            - name: REDIS_ARGS
+              value: "--save '' --appendonly no"
           ports:
             - containerPort: 6379
           readinessProbe:
