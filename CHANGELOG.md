@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/stuttgart-things/function-homerun2-pitcher/compare/v1.0.0...v1.0.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **fn:** post Message-shape body so omni-pitcher v1.11.x accepts the pitch ([afd776b](https://github.com/stuttgart-things/function-homerun2-pitcher/commit/afd776b8427345c39006d4ec9ddfc7d5d3b46421)), closes [#17](https://github.com/stuttgart-things/function-homerun2-pitcher/issues/17)
+
 # 1.0.0 (2026-05-15)
 
 
