@@ -9,6 +9,7 @@ a payload, and POSTs it to the homerun2-omni-pitcher ``/pitch`` endpoint.
 
 from __future__ import annotations
 
+import json
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,9 @@ if TYPE_CHECKING:
 
 AUTH_TOKEN_ENV = "PITCH_AUTH_TOKEN"  # noqa: S105
 WATCHED_RESOURCE_KEY = "ops.crossplane.io/watched-resource"
+
+
+AUTHOR = "function-homerun2-pitcher"
 
 
 def _build_envelope(res: dict[str, Any]) -> dict[str, Any]:
@@ -49,6 +53,33 @@ def _build_envelope(res: dict[str, Any]) -> dict[str, Any]:
     if "status" in res:
         envelope["status"] = res["status"]
     return envelope
+
+
+def _build_message(
+    watched: dict[str, Any], payload: dict[str, Any], stream: str
+) -> dict[str, Any]:
+    """Wrap an envelope/full payload in the pitcher's Message schema.
+
+    homerun2-omni-pitcher's `/pitch` endpoint requires top-level `title`
+    and `message` fields (see its README). Map the watched resource into
+    those, embedding the full payload as JSON in `message` so downstream
+    consumers can still reconstruct it.
+    """
+    meta = watched.get("metadata", {}) or {}
+    kind = watched.get("kind") or "Object"
+    name = meta.get("name") or "unknown"
+    namespace = meta.get("namespace") or ""
+    target = f"{namespace}/{name}" if namespace else name
+    tags = ",".join(filter(None, [kind, namespace]))
+
+    return {
+        "title": f"{kind} {target}",
+        "message": json.dumps(payload, sort_keys=True),
+        "severity": "info",
+        "author": AUTHOR,
+        "system": stream,
+        "tags": tags,
+    }
 
 
 class FunctionRunner(grpcv1.FunctionRunnerService):
@@ -112,7 +143,7 @@ class FunctionRunner(grpcv1.FunctionRunnerService):
             "Content-Type": "application/json",
             "X-Pitch-Stream": pi.stream,
         }
-        body = {"stream": pi.stream, "payload": payload}
+        body = _build_message(watched, payload, pi.stream)
         url = pi.pitch_url()
 
         log.info("Pitching watched resource", url=url)

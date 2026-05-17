@@ -56,8 +56,9 @@ dependencies = [
 
 [tool.hatch.envs.default.scripts]
 development = "python function/main.py --insecure --debug"
-test = "pytest {args:tests}"
-test-cov = "pytest --cov=function --cov-report=term-missing --cov-report=xml {args:tests}"
+test = "pytest -m 'not e2e' {args:tests}"
+test-cov = "pytest -m 'not e2e' --cov=function --cov-report=term-missing --cov-report=xml {args:tests}"
+test-e2e = "pytest -v -m e2e {args:tests/e2e}"
 
 [tool.hatch.envs.hatch-static-analysis]
 dependencies = ["ruff==0.12.7"]
@@ -66,6 +67,9 @@ config-path = "none"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "e2e: end-to-end tests requiring a running kind cluster (run via `task e2e:test`)",
+]
 
 [tool.coverage.run]
 branch = true
