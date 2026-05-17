@@ -180,8 +180,13 @@ tasks:
       # Task runs commands via mvdan/sh, which doesn't accept named signals
       # like INT/TERM in `trap`. EXIT alone covers normal exit + `set -e`
       # failures, which is what we need for CI cleanup.
+      #
+      # Dumping unconditionally rather than gating on `$?` inside the trap —
+      # the conditional form silently skipped the dump on test failure
+      # (mvdan/sh handles inline trap bodies differently than bash). A bit
+      # of noise on the green path is fine.
       - |
         set -eu
-        trap 'rc=$?; if [ "$rc" -ne 0 ]; then task e2e:dump || true; fi; task e2e:down' EXIT
+        trap 'task e2e:dump || true; task e2e:down' EXIT
         task e2e:up
         task e2e:test
