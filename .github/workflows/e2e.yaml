@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Don't use actions/setup-python — its versions-manifest has no prebuilt
       # for the self-hosted runner's Ubuntu 26.04. Use the system python3 and
