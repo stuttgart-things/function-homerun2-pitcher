@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Debian 12 base matches the distroless python3-debian12 runtime image.
-FROM --platform=$BUILDPLATFORM debian:12-slim AS build
+FROM --platform=$BUILDPLATFORM debian:13-slim AS build
 
 RUN --mount=type=cache,target=/var/lib/apt/lists \
     --mount=type=cache,target=/var/cache/apt \
