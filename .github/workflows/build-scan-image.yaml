@@ -69,7 +69,7 @@ jobs:
   trivy-scan:
     name: Trivy scan
     needs: [build]
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@15bb803fd72658fda50120f8a566d5594061e6ee # v1.2.0
     with:
       runs-on: ubuntu-latest
       image-ref-artifact: runtime-image-ref
